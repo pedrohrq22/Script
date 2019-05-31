@@ -1,0 +1,1134 @@
+ORACLE - ADMINISTRAÇÃO (sys/oracle_4U)
+
+Sistema gerenciador de banco de dados
+
+INSTACE [SGA - PROCESSOS] -> MEMÓRIA
+BD -> DISCO (Conjunto de arquivos)
+
+CADA BANCO DE DADOS TEM A SUA PRÓPRIA INSTÂNCIA.
+UM BANCO PODE TER MAIS DE UMA INSTÂNCIA (MAIS DE UMA MÁQUINA).
+
+COMPONENTES DA SGA:
+Database buffer cache [UNDO] -> gravação das alterações para possível ROLLBACK.
+Redo Log Buffer -> grava em disco as alterações, após commit ou até 3 segundos depois ou 1/3 do REDO cheio.
+Shared Pool -> comandos executados recentemente.
+Large Pool -> muito utilizada para realização de backup/restore.
+Java Pool -> procedures em java.
+Streams Pool -> para utilização de replicação.
+
+PGA [área de memória não compartilhada]
+
+--------------
+DATABASE WRITER PROCESS (DBWn) -> processo de gravação de dados BUFFER -> REDO -> REDO LOG FILE | BUFFER -> UNDO | BD
+
+REDO LOG FILE -> vários arquivos, há um processo chamado REDO LOG ARCHIVED, quando um log fica cheio, faz-se um backup, 
+isto é, a cada troca de REDO LOG FILE é realizado um COMMIT no BD. 
+Este processo de switch deve levar cerca de 20 a 30 minutos.
+
+pode acontecer de termos uma possível recuperação através dos RED LOG ARQUIVADOS.
+
+REDO LOG ARQUIVADO -> deve ser guardado por questão de auditoria, histórico ou possível retorno do banco para o passado.
+
+----------------
+
+Log Write Process (LGn) -> gravação de REDO NO DISCO
+
+CHECK POINT -> ?
+
+System Monitor Process (SMON)
+faz recuperação do banco automático
+
+Process Monitor Process (PMON) 
+monitormento de sessões
+
+Recoverer Process
+Operacões com mais de um banco
+
+Archiver Processes (ARCn) - gravação do REDO LOG ARCHIVE
+
+---------------
+
+DATABASE STORAGE ARCHITECTURE
+
+Parameter File -> formato texto e binário(aconselhável)
+Control Files -> controla a existência dos outros arquivos, não pode ser perdido.
+Online redo log files
+Data files
+Archived redo log files
+Backup files
+Password file -> utilizado em conexões remotas e quando se loga com o sys.
+Alert log and trace files -> histórico das alterações realizadas no banco.
+
+
+Comandos:
+Alter System Checkpoint -> força a gravação no DATAFILE.
+Log System Switch Log File -> força troca de REDO LOG FILE
+
+-----------------------
+LOGICAL AND PHYSICAL DATABASE STRUCTURES
+
+Database -> Tablespace -> Segment -> Extent -> Oracle data block
+
+		|
+		V
+		Datafile
+
+Uma Tablespace deve apontar para um ou mais Datafile, cada Datafile pode ter até 32Gb.
+Pode-se ter até 65 mil Datafiles em um Banco de Dados.
+
+Na criação do banco de dados ele cria duas Tablespaces: SYSTEM e SYSAUX
+O banco não funciona sem elas.
+
+OBS.: Pode ter um Datafile de 2Tb, mas será possível criar apenas 1 Datafile por Tablespace.
+
+-----------
+Linux -> Automatic Storage Management :
+Método de criação de banco ->
+
+FILE SYSTEM -> Create Tablespace X Datafile 'c:\dados\x.dbf' Size 10M
+ASM -> [Gerenciador de arquivos do próprio Oracle] Datafile 'XDATA' SIZE 10M
+
+---------------
+ORACLE DATABASE SOFTWARE
+Planning the Database -> 
+
+Transacional x Datawarehouse
+
+Choosing the Appropriate Character Set
+
+-------------
+MANAGEMENT FRAMEWORK
+	Instância
+	Listener
+	Gerenciador
+
+para parar o manager-> emctl stop @console
+	iniciar o manager-> emctl start @console
+
+Usuário sys -> SYSDBA [PERMITE A PARADA DO BANCO]
+	system -> Normal [NÃO PERMITE A PARADA DO BANCO
+
+CMD -> sqlplus sys/oracle_4U as sysdba - tipo de usuario sysdba, quando o usuário for o sys
+	sqlplus system/oracle_4U - para o tipo normal não precisa especificar
+	sqlplus system/oracle_4U@orcl2 - para escolher o banco de dados
+
+CONSULTAS DAS VIEWS DA ESTRUTURA DO BANCO DE DADOS ORACLE:
+	select name from v$datafile;
+	select name from v$controlfile;
+	select member from v$logfile;
+	select group#, sequence#, status from v$log;
+
+------------
+Enterprise Manager-> https://localhost:5500/em
+---------------
+
+USANDO O SQL DEVELOPER
+
+CREATE PFILE FROM SPFILE; //PARA CRIAR UM ARQUIVO DE PARAMETRO NO MODO TEXTO
+
+ALTER SYSTEM SET PROCESSES=200 SCOPE=BOTH;
+ALTER SYSTEM SET PROCESSES=200 SCOPE=SPFILE; -> QUANDO É ESTÁTICO O PARÂMETRO
+ALTER SYSTEM SET PROCESSES=200 SCOPE=MEMORY;
+
+---------
+
+
+------
+shutdow immediate
+
+startup nomount -> alter database mount; -> alter database open; //precisa do SPFILE
+	[restore de control file]
+
+startup mount -> alter database open;  //PRECISA DO CONTROLFILE
+	[backup]
+	[restore]
+	[ligar archive do redo log]
+	
+startup //PRECISA DOS REDO´s E DATAFILE´s
+-----
+
+startup force -> restart sujo
+
+-------------
+shutdown abort -> desligamento sujo, o Oracle tem que recriar o banco na inicialização
+shutdown immediate -> fecha todos os processos, desligamento limpo
+shutdown transactional -> aguarda as transações pendentes serem fechadas
+shutdown normal -> espera todas as conexões serem fechadas
+----
+
+PERDA DE DATAFILE
+SQL> shutdown immediate
+SQL > Startup mount 
+SQL> ALTER DATABASE DATAFILE '/ora/data/gamesds/system02.DBF' OFFLINE ;
+SQL > ALTER database Open ;
+
+ORA-01122:one datafile corrupted and it is no use, How do we bring it up?
+One of the datafiles corrupted and it is no use for business( we don't care about this datafile or tablespace and would like to trash it), However, the database won't be up if we do  not recover this datafile. The issue is "How do we bring it up with minimum effort?"
+
+The solution is the bring it offline with drop option:
+
+
+
+Total System Global Area 1152794624 bytes
+Fixed Size                  2157664 bytes
+Variable Size             939529120 bytes
+Database Buffers          201326592 bytes
+Redo Buffers                9781248 bytes
+Database mounted.
+ORA-01122: database file 11 failed verification check
+ORA-01110: data file 11: '/app/u03/oradata/XXXXdv03/devosb_data01.dbf'
+ORA-01210: data file header is media corrupt
+
+SQL> ALTER DATABASE DATAFILE '/app/u03/oradata/sroldv03/devosb_data01.dbf'OFFLINE;
+ALTER DATABASE DATAFILE '/app/u03/oradata/XXXXdv03/devosb_data01.dbf'OFFLINE
+*
+ERROR at line 1:
+ORA-01145: offline immediate disallowed unless media recovery enabled
+
+SQL> shutdown immediate
+ORA-01109: database not open
+
+Database dismounted.
+ORACLE instance shut down.
+SQL> startup
+ORA-32004: obsolete or deprecated parameter(s) specified for RDBMS instance
+ORACLE instance started.
+Total System Global Area 1152794624 bytes
+Fixed Size                  2157664 bytes
+Variable Size             939529120 bytes
+Database Buffers          201326592 bytes
+Redo Buffers                9781248 bytes
+Database mounted.
+ORA-01122: database file 11 failed verification check
+ORA-01110: data file 11: '/app/u03/oradata/XXXXdv03/devosb_data01.dbf'
+ORA-01210: data file header is media corrupt
+
+SQL> ALTER DATABASE DATAFILE '/app/u03/oradata/XXXXdv03/devosb_data01.dbf'
+OFFLINE DROP;
+
+SQL> Database altered.
+
+SQL> alter database open;
+Database altered.
+
+SQL>
+-----------------------------------------------------------------------------------------------------
+
+Viewing e Alert Log
+
+show parameter background;
+
+Conjunto de Views do Banco de Dados:
+1. V$FIXED_TABLE
+
+2. SELECT * FROM DICTIONARY
+DBA_ TUDO DO BANCO
+ALL_ TUDO QUE VOCE TEM ACESSO
+USER_ TUDO DO USUARIO LOGADO
+
+--
+
+V$PARAMETER MOSTRA SE O VALOR É DINÂNMICO OU NÃO.
+show parameter spfile;
+show parameter db_files; - numero de arquivos no banco
+show parameter undo_retention; -tempo que os comandos ficam no UNDO
+show parameter db_name; -qual o banco conectado
+
+---
+select status from v$instance;
+-----
+
+DBCA -> GERENCIADOR PARA CRIAÇÃO DO BANCO DE DADOS
+----
+no prompt do DOS-> SET ORACLE_SID=ORCL2 -> PARA CONFIGURAR O BANCO PARA SER INICIALIZADO
+
+alteração permanente deve ser realizada no REGEDIT (REGISTRO DO WINDOWS)
+----
+
+ORACLE NET SERVICES
+LISTENER -> listener.ora e sqlnet.ora
+	Permite conexões remotas
+	Configurar net manager
+	dbhome -> C:\app\admlogger\product\11.2.0\dbhome_1\NETWORK\ADMIN
+
+NO MS-DOS:
+	parar serviços -> lsnrctl stop
+	inicia serviços -> lsnrctl start
+	verificar situação -> lsnrctl status listener2
+
+Conexões remotas:
+TPC/IP: sqlplus system/ORACLE_4u@172.16.0.237:1521/orcl2.oracle.com
+HOSTNAME: sqlplus system/oracle_4U@P3L2M10:1521/orcl2.oracle.com
+
+Testar conexão:
+MS-DOS: tnsping orcl2
+
+---------
+
+Conexão dedicada x compartilhada
+Dedicada - 1 processo para 1 usuário
+Compartilhada, - 1 processo para + de 1 usuário
+
+-----
+Criação de link de acesso para outro banco
+
+alter user scott identified by tiger; --alterando senha do usuário
+alter user scott account unlock; --desbloqueando usuário
+grant create database link to scott;
+
+-- SCOTT (orcl2)
+create database link dblink_orcl3
+connect to scott identified by tiger
+using 'orcl3';
+
+------testar link
+select * from dept@dblink_orcl3;
+
+-- TABLESPACE
+alter tablespace tbs2 offline;
+
+ALTER TABLESPACE TBS2 RENAME DATAFILE 'X' TO 'Y';
+
+ALTER TABLESPACE TBS2 ONLINE;
+	
+-------------
+create table lixo tablespace tbs2 as select * from scott.emp;
+
+insert into lixo select * from lixo;
+
+alter database datafile 'c:\app\admlogger\oradata\orcl2\datafile\tbs2.dbf' resize 10M; --aumento de tamanho
+alter database datafile 'c:\app\admlogger\oradata\orcl2\datafile\tbs2.dbf' autoextend on next 1M maxsize Unlimited; --auto incremento
+
+--eliminar tablespace
+drop tablespace tbs2 including contents and datafiles; --o jeito correto, pois desta forma:
+drop tablespace tbs2, não é possível se houver alguma tabela com dados e os arquivos (datafiles) ficaram nas pastas inutilizados.
+
+-- colunas de identificação das tablespaces
+desc dba_data_files
+
+select tablespace_name, file_name, bytes, blocks, status, ONLINE_STATUS, USER_BLOCKS, USER_BYTES from dba_data_files;
+
+create tablespace tbs1
+datafile 'C:\APP\ADMLOGGER\ORADATA\ORCL2\DATAFILE\tbs1.dbf'
+size 5M;
+
+show parameter db_create_file_dest; -- verifica se há um caminho padrão para criação de tablespaces
+
+create tablespace tbs3;
+----------------------------------------------
+DATABASE USER ACCOUNTS
+
+SELECT USERNAME, ACCOUNT_STATUS FROM DBA_USERS ORDER BY 2;
+
+create user domtec identified by master default tablespace users temporary tablespace temp;
+
+alter user domtec identified by master;
+
+alter user domtec account unlock;
+
+CREATE TABLE exemplo 
+(nome varchar(50))
+tablespace tbs1;
+
+show user;
+
+grant sysdba to domtec;
+
+connect domtec/123456 as sysdba;
+
+show user;
+
+revoke sysdba from domtec;
+
+create view V_Exemplo as select * from exemplo;
+
+grant create table, create view to role_admin;
+
+grant role_admin to domtec;
+
+select * from session_privs;
+
+------
+ROLE
+--definir senha para uma role e ativá-la para utilização
+set role role_admin identified by 123456;
+
+-----------
+PROFILE
+--Criado um profile_teste no EM
+--ALTERADO O PARAMETRO DO PROFILE PARA 2 CONEXÕES CONCORRENTES
+--ALTERAR O PARAMETRO DO ORACLE RESOURCE_LIMIT PARA TRUE
+
+--ERROR:
+--ORA-02391: limite de SESSIONS_PER_USER simultÔneo excedido
+ALTER USER "DOMTEC" ACCOUNT UNLOCK
+select username, account_status from dba_users;
+
+--expiração
+ alter user domtec password expire;
+
+@d:\utlpwdmg.sql --FORÇA SENHA COM PELO MENOS UM CARACTER E NUMERO, COM 8 DIGITOS
+alter user domtec password expire;
+-- ao trocar a senha, só aceitará senha forte, com a regra da função VERIFY_FUNCTION_11G
+ select * from session_privs;
+set role role_admin identified by 123456;
+
+SQL> select * from session_privs;
+
+PRIVILEGE
+----------------------------------------
+CREATE SESSION
+CREATE TABLE
+CREATE VIEW
+
+SQL> create table teste (numero number) tablespace t
+
+Tabela criada.
+
+SQL> insert into teste (numero) values (12);
+insert into teste (numero) values (12)
+            *
+ERRO na linha 1:
+ORA-01950: nÒo hß privilÚgios no tablespace TBS1'
+
+-- no sys alterar quota -> alter user domtec quota unlimited on tbs1;
+
+SQL> insert into teste (numero) values (12);
+
+1 linha criada.
+
+--funções da Oracle
+C:\app\admlogger\product\11.2.0\dbhome_1\RDBMS\ADMIN
+
+--CASE SENSITIVE
+A partir do 11G há um parâmetro que já vem configurado com TRUE.
+Nas versões antigas as senhas não eram CASE SENSITIVE
+
+--CONCORRÊNCIA
+--1o. HR
+SQL> update employees set salary=salary+100 where employee_id=100;
+
+--2o. HR
+SQL> update employees set salary=salary+100 where employee_id=100;
+
+--SYS -- ENQUANTO UM COMMIT OU ROLLBACK FOR EXECUTADO NO PRIMEIRO HR
+--O SEGUNDO FICARÁ BLOQUEADO
+SQL> select sid, serial#, username, blocking_session, status from v$session wher
+e username = 'HR';
+
+--MATAR SESSÃO DO USUÁRIO
+
+SQL> SELECT SID, SERIAL#, USERNAME FROM V$SESSION WHERE SID IN (SELECT BLOCKING
+SESSION FROM V$SESSION); --DESCOBRIR QUAL SESSÃO ESTÁ BLOQUEANDO
+
+SQL> ALTER SYSTEM KILL SESSION '12,81' IMMEDIATE; --SID,SERIAL#
+
+--DEADLOCK
+--1o. HR
+SQL> update employees set salary=salary+100 where employee_id=100;
+--2o. HR
+SQL> update employees set salary=salary+100 where employee_id=101;
+--1o. HR
+SQL> update employees set salary=salary+100 where employee_id=101;
+--2o. HR
+SQL> update employees set salary=salary+100 where employee_id=100;
+--DEADLOCK
+update employees set salary=salary+100 where employee_id=101
+       *
+ERRO na linha 1:
+ORA-00060: conflito detectado ao aguardar recurso
+
+--UNDO
+--HÁ UMA TABLESPACE CRIADA DURANTE A INSTALAÇÃO PARA UNDO, PODE-SE TER MAIS DE UMA TABLESPACE 
+COM ESTA FINALIDADE, MAS APENAS UMA ATIVA.
+-- STATUS DO UNDO
+	ATIVA -- SEM COMMIT
+	NÃO EXPIRADA --COM COMMIT
+	EXPIRADA -- COM COMMIT
+
+--EXEMPLO DE PESQUISA NO UNDO
+SQL> select max_salary from jobs where job_id='AD_PRES';
+
+MAX_SALARY
+----------
+     40000
+
+SQL> update JOBS SET
+  2  MAX_SALARY=25000 WHERE JOB_ID='AD_PRES';
+
+1 linha atualizada.
+
+SQL> commit
+  2  ;
+
+Commit concluÝdo.
+
+SQL> SELECT MAX_SALARY FROM JOBS
+  2  AS OF TIMESTAMP (SYSDATE - 10/1440)
+  3  WHERE JOB_ID = 'AD_PRES';
+
+MAX_SALARY
+----------
+     40000
+
+SQL> select max_salary from jobs where job_id='AD_PRES';
+
+MAX_SALARY
+----------
+     25000
+
+SQL> update JOBS SET
+  2  MAX_SALARY = (
+  3  SELECT MAX_SALARY FROM JOBS
+  4  AS OF TIMESTAMP (SYSDATE - 10/1440)
+  5  WHERE JOB_ID = 'AD_PRES')
+  6  WHERE JOB_ID = 'AD_PRES';
+
+1 linha atualizada.
+
+--------------
+UNDO DATA X REDO DATA
+-- Os dados são gravados do UNDO para o REDO, após commit ou 3 segundos.
+--rollback e flashback vem do UNDO, e o REDO quando o banco cai ou há perda de dados físico.
+--UNDO_RETENTION=900 (15 min.)
+
+---
+AUDITORIA
+--AUDIT TRAIL - PARÂMETRO ESTÁTICO
+--------------------------------------
+TRUNCATE AUD$;
+SELECT COUNT(1) FROM AUD$;
+
+1.PRIVILEGIO
+AUDIT SELECT ANY TABLE BY HR;
+AUDIT SELECT ANY TABLE BY SH,HR BY SESSION WHENEVER SUCCESSFUL;
+AUDIT SELECT ANY TABLE BY SCOTT BY ACCESS WHENEVER NOT SUCCESSFUL;
+AUDIT DROP ANY TABLE BY ACCESS;
+ AUDIT CREATE SESSION BY HR WHENEVER NOT SUCCESSFUL; <=== (BY ACCESS)
+AUDIT CREATE SESSION;
+
+2.INSTRUCAO
+ AUDIT INSERT TABLE BY HR;
+AUDIT INSERT TABLE BY HR, SH BY SESSION WHENEVER SUCCESFUL;
+AUDIT SELECT TABLE BY HR BY SESSION;
+AUDIT SELECT TABLE BY ACCESS;
+AUDIT SELECT TABLE;
+AUDIT TABLE;
+
+3.OBJETO
+AUDIT DELETE ON HR.JOBS;
+ AUDIT DELETE ON HR.JOBS BY ACCESS WHENEVER NOT SUCCESSFUL;
+AUDIT SELECT ON HR.EMPLOYEES BY ACCESS;
+
+--------------
+REMOVENDO AUDITORIAS
+NOAUDIT DROP PROFILE
+NOAUDIT ALTER ANY TABLE
+NOAUDIT ALTER SYSTEM
+NOAUDIT ALTER DATABASE
+NOAUDIT DROP USER
+NOAUDIT CREATE SESSION
+NOAUDIT CREATE USER
+NOAUDIT ALTER USER
+NOAUDIT EXEMPT ACCESS POLICY
+NOAUDIT CREATE PUBLIC DATABASE LINK
+NOAUDIT CREATE ANY LIBRARY
+NOAUDIT CREATE ANY JOB
+NOAUDIT CREATE EXTERNAL JOB
+NOAUDIT AUDIT SYSTEM
+NOAUDIT GRANT ANY ROLE
+NOAUDIT GRANT ANY OBJECT PRIVILEGE
+NOAUDIT GRANT ANY PRIVILEGE
+NOAUDIT ALTER ANY PROCEDURE
+NOAUDIT DROP ANY PROCEDURE
+NOAUDIT CREATE ANY PROCEDURE
+NOAUDIT DROP ANY TABLE
+NOAUDIT CREATE ANY TABLE
+NOAUDIT ALTER PROFILE
+
+NOAUDIT SYSTEM GRANT
+NOAUDIT PUBLIC SYNONYM
+NOAUDIT ROLE
+NOAUDIT DATABASE LINK
+NOAUDIT PROFILE
+
+-------------------
+--Objetos auditados
+SQL> SELECT "OWNER", "OBJ_NAME", "USERNAME", "ACTION_NAME", "TIMESTAMP", "SQL_TE
+XT" FROM "SYS"."DBA_AUDIT_OBJECT"  ORDER BY extended_timestamp desc;
+
+--log-ins com falha auditados
+SELECT "USERNAME", "OS_USERNAME", "USERHOST", "EXTENDED_TIMESTAMP" 
+FROM "SYS"."DBA_AUDIT_SESSION" WHERE returncode != 0 ORDER BY extended_timestamp desc
+
+
+
+1. LOGAR COM HR COM A SENHA ERRADA -- hr/master3311
+2. INSERT NA TABELA  REGIONS (HR)
+	 insert into regions (region_id, region_name) values (343,'ooo');
+3. APAGAR TODAS AS LINHAS DA TABELA JOBS.
+	delete from jobs
+*
+ERRO na linha 1:
+ORA-02292: restriþÒo de integridade (HR.EMP_JOB_FK) violada - registro filho
+localizado
+
+--OUTRO TIPO DE AUDITORIA
+SQL> BEGIN
+     DBMS_FGA.add_policy(
+             object_schema => 'SCOTT',
+             object_name => 'EMP',
+             policy_name => 'SAL_CHK_AUD',
+             audit_condition => 'SAL > 3000',
+             audit_column => 'SAL');
+  END;
+  /
+
+------------------------------
+--conectado como scott/master3311
+SQL> connect scott/oracle_4U;
+Conectado.
+SQL> select ename, sal from emp where sal < 3000;
+
+ENAME             SAL
+---------- ----------
+SMITH             800
+ALLEN            1600
+WARD             1250
+JONES            2975
+MARTIN           1250
+BLAKE            2850
+CLARK            2450
+TURNER           1500
+ADAMS            1100
+JAMES             950
+MILLER           1300
+
+11 linhas selecionadas.
+
+SQL> select sal from emp;
+
+       SAL
+----------
+       800
+      1600
+      1250
+      2975
+      1250
+      2850
+      2450
+      3000
+      5000
+      1500
+      1100
+
+       SAL
+----------
+       950
+      3000
+      1300
+
+14 linhas selecionadas.
+
+SQL> select ename from emp where sal > 3000;
+
+ENAME
+----------
+KING
+--------------------------------------
+
+select db_user, timestamp, sql_text from dba_fga_audit_trail;
+
+SQL> select db_user, timestamp, sql_text from dba_fga_audit_trail;
+
+DB_USER                        TIMESTAM
+------------------------------ --------
+SQL_TEXT
+---------------------------------------------------------------------
+
+SCOTT                          02/07/14
+select sal from emp
+
+SCOTT                          02/07/14
+select ename from emp where sal > 3000
+----------------------------------------------------------------
+
+---street fighter assassinus fist -- pesquisar
+---richfaces e primefaces
+
+--FORÇAR GRAVAÇÃO DE DATAFILE
+SQL> alter system checkpoint;
+
+Sistema alterado.
+
+SQL> select current_scn from v$database;
+
+CURRENT_SCN
+-----------
+    1048512
+
+SQL> select file#, checkpoint_change# from v$datafile;
+
+     FILE# CHECKPOINT_CHANGE#
+---------- ------------------
+         1            1048505
+         2            1048505
+         3            1048505
+         4            1048505
+         5            1048505
+
+--------------
+MANUTENÇÃO
+---------------
+ALERT - ALERT_ORCL2.LOG -- por exemplo, arquivo texto para consulta das ocorrências do banco
+AWR - Repositório Automático de Carga de Trabalho
+
+----------------
+ESTATÍSTICAS - 
+
+--
+TUNNING - 
+--
+MARRETA PARA FORÇAR ESFORÇO DO BANCO DE DADOS
+create table tabela_grande
+as select * from sh.sales;
+delete tabela_grande;
+commit;
+---
+
+-- Possibilidade de criar mais serviços e partilhar o TNS, para conexões diferentes, por departamento, ação ou outro critério qualquer.
+SHOW PARAMETER SERVICE;
+
+---
+AMM Automatic Memory Management
+---
+	MEMORY_MAX_TARGET
+	MEMORY_TARGET
+-----------------------------
+ASMM Automatic Shared Memory Management
+---
+	SGA_TARGET
+	PGA_AGGREGATE_SIZE
+----------------------------
+MANUAL
+---
+	DB_CACHE_SIZE
+	SHARED_POOL_SIZE
+	etc
+----------------------------------
+SHOW PARAMETER SERVICE;
+
+SHOW PARAMETER MEMORY_MAX_TARGET
+SHOW PARAMETER MEMORY_TARGET
+
+SHOW PARAMETER SGA_TARGET
+SHOW PARAMETER PGA_AGGREGATE_SIZE
+------------------------------------------
+
+VERIFICAR ERRO DO TAMANHO DA TABLESPACE
+----------------------
+SQL> create table lixo2 tablespace tbs1
+  2  as select * from dba_users;
+
+Tabela criada.
+
+SQL> insert into lixo2 select * from lixo2;
+insert into lixo2 select * from lixo2
+*
+ERRO na linha 1:
+ORA-01653: nÒo Ú possÝvel estender a tabela SYSTEM.LIXO2 em 128 no tablespace
+TBS1
+
+
+SQL> select reason from dba_outstanding_alerts;
+REASON
+---------------------------------------------------------------
+
+O tablespace [TBS1] estß [100 percent] cheio
+------------------------------------------------------------------
+
+PERFORMANCE
+--------------------------------------
+SQL> select last_name, salary
+  2  from employees where employee_id = 100;
+
+LAST_NAME                     SALARY
+------------------------- ----------
+King                           24000
+
+SQL> alter table employees move;
+
+Tabela alterada.
+
+------------------------------------
+BACKUP RECOVEY
+---------------------------------------
+show parameter DB_RECOVERY_FILE_DEST --localização da área de backup
+show parameter DB_RECOVERY_FILE_DEST_SIZE -- tamanho da área de backup
+
+--VERIFICAR LOCAIS DE GRAVAÇÃO DO CONTROL FILE
+select name from v$controlfile;
+--ALTERAR OU CRIAR UM NOVO CAMINHO
+ALTER SYSTEM SET CONTROL_FILES = 'C:\APP\ADMLOGGER\ORADATA\ORCL4\CONTROLFILE\O1_MF_9V8GLC0R_.CTL', 
+'C:\APP\ADMLOGGER\FLASH_RECOVERY_AREA\ORCL4\CONTROLFILE\O1_MF_9V8GLC5G_.CTL', 'D:\ORCL4\CONTROLFILE\O1_MF_9V8GLC5G_.CTL'
+SCOPE = SPFILE;
+
+SHUTDOWN IMMEDIATE;
+
+-- cópia do arquivo recém criado.
+
+STARTUP
+----------------------------------------------------------------
+REDO LOG FILES - GRUPOS
+select group#, status, members from v$log; --CONSULTA DE GRUPOS
+--------------------------
+FORÇAR TROCA DE GRUPO
+-----------------------
+ALTER SYSTEM SWITCH LOGFILE;
+alter system checkpoint; --FORÇA CHECKPOINT, POIS O GRUPO
+
+------LIGANDO O ARCHIVELOG------------------------------
+SQL> SHOW USER
+USER Ú "SYS"
+SQL> SHUTDOWN IMMEDIATE
+Banco de dados fechado.
+Banco de dados desmontado.
+InstÔncia ORACLE desativada.
+SQL> STARTUP MOUNT
+InstÔncia ORACLE iniciada.
+
+Total System Global Area 1043886080 bytes
+Fixed Size                  2182344 bytes
+Variable Size             654312248 bytes
+Database Buffers          381681664 bytes
+Redo Buffers                5709824 bytes
+Banco de dados montado.
+SQL> ALTER DATABASE ARCHIVELOG;
+
+Banco de dados alterado.
+
+SQL> ALTER DATABASE OPEN;
+
+Banco de dados alterado.
+
+SQL> ARCHIVE LOG LIST
+Modo log de banco de dados     Modo de Arquivamento
+Arquivamento automßtico             Ativado
+Destino de arquivamento            USE_DB_RECOVERY_FILE_DEST
+A sequÛncia de log on-line mais antiga     12
+Pr¾xima sequÛncia de log a arquivar   14
+SequÛncia de log atual           14
+-----------------------------------------------------------------------------------
+BACKUP & RESTORE
+RMAN -- FERRAMENTA PADRÃO ORACLE DE BACKUP
+-COMPLETO (FULL)
+-COMULATIVO - LEVEL 0 SEMPRE
+-DIFERENCIAL - LEVEL 1
+
+DOIS TIPOS DE ARQUIVOS:
+	IMAGE COPIES
+	BACKUP SETS -- NÃO GRAVA ESPAÇOS EM BRANCO
+
+*IMPORTANTE, DEIXAR MARCADO EM POLÍTICA O BACKUP AUTOMÁTICO DOS CONTROLFILES E SPFILE.
+--------------------------------------------------------------------------------------
+--configurando o RMAN
+C:\Windows\system32>RMAN TARGET SYS/oracle_4U
+
+RMAN> configure controlfile autobackup on;
+
+usar o arquivo de controle do banco de dados de destino em vez do catßlogo de re
+cuperaþÒo
+novos parÔmetros de configuraþÒo RMAN:
+CONFIGURE CONTROLFILE AUTOBACKUP ON;
+os novos parÔmetros de configuraþÒo RMAN foram armazenados com sucesso
+
+RMAN> report schema;
+
+Relat¾rio do esquema do banco de dados para o banco de dados com db_unique_name
+ORCL4
+
+Lista de Arquivos de Dados Permanentes
+===========================
+Tamanho do Arquivo(MB) Tablespace           RB segs Nome do Arquivo de Dados
+---- -------- -------------------- ------- ------------------------
+1    720      SYSTEM               ***     C:\APP\ADMLOGGER\ORADATA\ORCL4\DATAFI
+LE\O1_MF_SYSTEM_9V8GJ0TP_.DBF
+2    530      SYSAUX               ***     C:\APP\ADMLOGGER\ORADATA\ORCL4\DATAFI
+LE\O1_MF_SYSAUX_9V8GJ102_.DBF
+3    145      UNDOTBS1             ***     C:\APP\ADMLOGGER\ORADATA\ORCL4\DATAFI
+LE\O1_MF_UNDOTBS1_9V8GJ11S_.DBF
+4    5        USERS                ***     C:\APP\ADMLOGGER\ORADATA\ORCL4\DATAFI
+LE\O1_MF_USERS_9V8GJ13J_.DBF
+5    100      EXAMPLE              ***     C:\APP\ADMLOGGER\ORADATA\ORCL4\DATAFI
+LE\O1_MF_EXAMPLE_9V8GM3CY_.DBF
+6    5        TBS1                 ***     C:\APP\ADMLOGGER\ORADATA\ORCL4\DATAFI
+LE\TBS1
+
+Lista de Arquivos Temporßrios
+=======================
+Tamanho do Arquivo(MB) Tablespace           Tamanho Mßximo(MB) Nome do Arquivo T
+emporßrio
+---- -------- -------------------- ----------- --------------------
+1    29       TEMP                 32767       C:\APP\ADMLOGGER\ORADATA\ORCL4\DA
+TAFILE\O1_MF_TEMP_9V8GLYFT_.TMP
+
+RMAN> BACKUP TABLESPACE USERS;
+
+Iniciando backup em 03/07/14
+canal alocado: ORA_DISK_1
+canal ORA_DISK_1: SID=142 tipo de dispositivo=DISK
+canal ORA_DISK_1: iniciando conjunto de backup completo de arquivo de dados
+canal ORA_DISK_1: especificando arquivo[s] de dados no conjunto de backups
+n·mero do arquivo=00004 nome=C:\APP\ADMLOGGER\ORADATA\ORCL4\DATAFILE\O1_MF_USERS
+_9V8GJ13J_.DBF do arquivo de dados de entrada
+canal ORA_DISK_1: iniciando o componente 1 em 03/07/14
+canal ORA_DISK_1: componente 1 finalizado em 03/07/14
+handle de componente=C:\APP\ADMLOGGER\FLASH_RECOVERY_AREA\ORCL4\BACKUPSET\2014_0
+7_03\O1_MF_NNNDF_TAG20140703T152629_9VC82P9P_.BKP tag=TAG20140703T152629 comentß
+rio=NONE
+canal ORA_DISK_1: conjunto de backups concluÝdo, tempo decorrido: 00:00:01
+Finalizado backup em 03/07/14
+
+Iniciando Control File and SPFILE Autobackup em 03/07/14
+handle de componente=C:\APP\ADMLOGGER\FLASH_RECOVERY_AREA\ORCL4\AUTOBACKUP\2014_
+07_03\O1_MF_S_851959591_9VC82RSK_.BKP comentßrio=NONE
+Finalizado Control File and SPFILE Autobackup em 03/07/14
+----------------------------------------------------------------------------------
+RMAN> LIST BACKUP;
+
+
+Lista de Conjuntos de Backup
+===================
+
+
+BS Key  Type LV Size       Device Type Elapsed Time Horßrio de ConclusÒo
+------- ---- -- ---------- ----------- ------------ --------------------
+1       Full    3.34M      DISK        00:00:01     03/07/14
+        Chave BP: 1   Status: AVAILABLE  Compactado: NO  Tag: TAG20140703T152629
+
+        Nome do Componente: C:\APP\ADMLOGGER\FLASH_RECOVERY_AREA\ORCL4\BACKUPSET
+\2014_07_03\O1_MF_NNNDF_TAG20140703T152629_9VC82P9P_.BKP
+  Lista de Arquivos de Dados no conjunto de backup 1
+  File LV Type Ckp SCN    Tempo de Verif. Name
+  ---- -- ---- ---------- --------------- ----
+  4       Full 1132995    03/07/14        C:\APP\ADMLOGGER\ORADATA\ORCL4\DATAFIL
+E\O1_MF_USERS_9V8GJ13J_.DBF
+
+BS Key  Type LV Size       Device Type Elapsed Time Horßrio de ConclusÒo
+------- ---- -- ---------- ----------- ------------ --------------------
+2       Full    9.36M      DISK        00:00:02     03/07/14
+        Chave BP: 2   Status: AVAILABLE  Compactado: NO  Tag: TAG20140703T152631
+
+        Nome do Componente: C:\APP\ADMLOGGER\FLASH_RECOVERY_AREA\ORCL4\AUTOBACKU
+P\2014_07_03\O1_MF_S_851959591_9VC82RSK_.BKP
+  SPFILE IncluÝdo: Horßrio de modificaþÒo: 03/07/14
+  SPFILE db_unique_name: ORCL4
+  Arquivo de Controle IncluÝdo: SCN Ckp: 1133001      Tempo Ckp: 03/07/14
+--------------------------------------------------------------------------------------
+
+
+--- PARA FAZER BACKUP DE TODO O BANCO --->>> BACKUP DATABASE
+-----------------------------------------------------------------------------------
+RMAN> backup database plus archivelog;  --força troca do redo, gerando archive, antes e depois do backup dos datafiles.
+-------------------------------------------------------------------------------------
+delete backup --apaga todos os bkps existentes.
+-----------------------------------------------------------------------------
+list backup of datafile 1; ------verificar se existe backup este datafile
+------------------------------------------------------------------------
+RESTAURAR CONTROL FILE PERDIDO:
+RMAN> restore controlfile from '+DATA/orcl/controlfile/current.260.654456464';
+-----------------------------------
+PERDA DE UMA TABLESPACE
+-----------------------------------
+SQL> alter tablespace users offline;
+SQL> select name from v$datafile;
+-- COPIAR TABLESPACE USERS PARA OUTRO LUGAR
+SQL> shutdown immediate
+SQL> startup
+-- RECUPERA ARQUIVO DATAFILE
+SQL> alter tablespace users online;
+----------------------------------------------------------
+2a. PERDA DE UMA TABLESPACE
+-------------------------------------
+SQL> shutdown immediate
+EXCLUI ARQUIVO DATAFILE DO USERS
+SQL> startup
+SQL> select status from v$instance
+InstÔncia ORACLE iniciada.
+
+Total System Global Area 1043886080 bytes
+Fixed Size                  2182344 bytes
+Variable Size             666895160 bytes
+Database Buffers          369098752 bytes
+Redo Buffers                5709824 bytes
+Banco de dados montado.
+ORA-01157: nÒo Ú possÝvel identificar/bloquear arquivo de dados 4 - consulte
+arquivo de anßlise DBWR
+ORA-01110: 4 do arquivo de dados:
+'C:\APP\ADMLOGGER\ORADATA\ORCL4\DATAFILE\O1_MF_USERS_9V8GJ13J_.DBF'
+
+SQL> select status from v$instance
+  2  ;
+
+STATUS
+------------
+MOUNTED
+
+-->RMAN
+C:\Windows\system32>rman target sys/oracle_4U
+RMAN> restore tablespace users;	--RESTAURA O BACKUP REALIZADO DA TABLESPACE
+RMAN> recover tablespace users;	--RECUPERA DADOS DO REDO LOG FILE ONLINE
+-----------------------------------------
+-->SQL>
+
+SQL> ALTER DATABASE OPEN;
+----------------------------------------------
+BUSCA DE ERROS - EXIBIR E GERENCIAR FALHAS
+--------------------------------------
+RMAN> list failure;
+
+nenhuma falha encontrada corresponde Ó especificaþÒo
+
+RMAN> advise failure;
+
+nenhuma falha encontrada corresponde Ó especificaþÒo
+
+RMAN> repair failure;
+
+RMAN-00571: ===========================================================
+RMAN-00569: =============== ERROR MESSAGE STACK FOLLOWS ===============
+RMAN-00571: ===========================================================
+RMAN-03002: falha do comando repair em 07/04/2014 10:19:36
+RMAN-06953: nenhum reparo automßtico foi listado pelo ADVISE FAILURE
+
+RMAN>
+-------------------------------------------------------------------
+
+ENVIO DE UMA CONTA (SCOTT) DE UM BANCO PARA OUTRO
+
+ORCL4
+---------
+SQL> CREATE DIRECTORY MY_DIR AS 'C:\TEMP';
+
+ORCL3
+---------
+C:\Windows\system32>SQLPLUS sys/oracle_4U@orcl3 as sysdba
+SQL>  CREATE DIRECTORY MY_DIR AS 'C:\TEMP';
+SQL> CREATE USER ANDRADE IDENTIFIED BY adroide
+  2  DEFAULT TABLESPACE USERS
+  3  TEMPORARY TABLESPACE TEMP;
+SQL> GRANT CONNECT, RESOURCE TO ANDRADE;
+
+C:\Windows\system32>sqlplus andrade/adroide@orcl3
+
+SQL*Plus: Release 11.2.0.1.0 Production on Sex Jul 4 10:51:34 2014
+
+Copyright (c) 1982, 2010, Oracle.  All rights reserved.
+
+
+Conectado a:
+Oracle Database 11g Enterprise Edition Release 11.2.0.1.0 - 64bit Production
+With the Partitioning, OLAP, Data Mining and Real Application Testing options
+
+SQL> select * from dept;
+
+    DEPTNO DNAME          LOC
+---------- -------------- -------------
+        10 ACCOUNTING     NEW YORK
+        20 RESEARCH       DALLAS
+        30 SALES          CHICAGO
+        40 OPERATIONS     BOSTON
+
+
+
+PROMPT DOS
+----------
+c:\> expdp system/oracle_4U directory=my_dir dumpfile=andra.dmp schemas=scott
+
+Export: Release 11.2.0.1.0 - Production on Sex Jul 4 10:42:06 2014
+
+Copyright (c) 1982, 2009, Oracle and/or its affiliates.  All rights reserved.
+
+Conectado a: Oracle Database 11g Enterprise Edition Release 11.2.0.1.0 - 64bit P
+roduction
+With the Partitioning, OLAP, Data Mining and Real Application Testing options
+Iniciando "SYSTEM"."SYS_EXPORT_SCHEMA_01":  system/******** directory=my_dir dum
+pfile=andra.dmp schemas=scott
+Estimativa em andamento com o mÚtodo BLOCKS...
+Processando o tipo de objeto SCHEMA_EXPORT/TABLE/TABLE_DATA
+Estimativa total usando o mÚtodo de BLOCKS: 192 KB
+Processando o tipo de objeto SCHEMA_EXPORT/USER
+Processando o tipo de objeto SCHEMA_EXPORT/SYSTEM_GRANT
+Processando o tipo de objeto SCHEMA_EXPORT/ROLE_GRANT
+Processando o tipo de objeto SCHEMA_EXPORT/DEFAULT_ROLE
+Processando o tipo de objeto SCHEMA_EXPORT/PRE_SCHEMA/PROCACT_SCHEMA
+Processando o tipo de objeto SCHEMA_EXPORT/TABLE/TABLE
+Processando o tipo de objeto SCHEMA_EXPORT/TABLE/INDEX/INDEX
+Processando o tipo de objeto SCHEMA_EXPORT/TABLE/CONSTRAINT/CONSTRAINT
+Processando o tipo de objeto SCHEMA_EXPORT/TABLE/FGA_POLICY
+Processando o tipo de objeto SCHEMA_EXPORT/TABLE/CONSTRAINT/REF_CONSTRAINT
+. . exportou "SCOTT"."DEPT"                              5.937 KB       4 linhas
+
+. . exportou "SCOTT"."EMP"                               8.570 KB      14 linhas
+
+. . exportou "SCOTT"."SALGRADE"                          5.867 KB       5 linhas
+
+. . exportou "SCOTT"."BONUS"                                 0 KB       0 linhas
+
+Tabela-mestre "SYSTEM"."SYS_EXPORT_SCHEMA_01" carregada/descarregada com sucesso
+
+******************************************************************************
+Conjunto de arquivos de dump para SYSTEM.SYS_EXPORT_SCHEMA_01 Ú:
+  C:\TEMP\ANDRA.DMP
+O job "SYSTEM"."SYS_EXPORT_SCHEMA_01" foi concluÝdo com sucesso em 10:43:02
+--------------------------------------------------------------------------------------------------------------
+IMPORTAÇÃO PARA O ORCL3
+---------------------------------------------------------------
+C:\Windows\system32>impdp system/oracle_4U dumpfile=andra.dmp directory=my_dir r
+emap_schema=scott:andrade
+
+Import: Release 11.2.0.1.0 - Production on Sex Jul 4 10:48:31 2014
+
+Copyright (c) 1982, 2009, Oracle and/or its affiliates.  All rights reserved.
+
+Conectado a: Oracle Database 11g Enterprise Edition Release 11.2.0.1.0 - 64bit P
+roduction
+With the Partitioning, OLAP, Data Mining and Real Application Testing options
+Tabela-mestre "SYSTEM"."SYS_IMPORT_FULL_01" carregada/descarregada com sucesso
+Iniciando "SYSTEM"."SYS_IMPORT_FULL_01":  system/******** dumpfile=andra.dmp dir
+ectory=my_dir remap_schema=scott:andrade
+Processando o tipo de objeto SCHEMA_EXPORT/USER
+ORA-31684: O tipo de objeto USER:"ANDRADE" jß existe
+Processando o tipo de objeto SCHEMA_EXPORT/SYSTEM_GRANT
+Processando o tipo de objeto SCHEMA_EXPORT/ROLE_GRANT
+Processando o tipo de objeto SCHEMA_EXPORT/DEFAULT_ROLE
+Processando o tipo de objeto SCHEMA_EXPORT/PRE_SCHEMA/PROCACT_SCHEMA
+Processando o tipo de objeto SCHEMA_EXPORT/TABLE/TABLE
+Processando o tipo de objeto SCHEMA_EXPORT/TABLE/TABLE_DATA
+. . importou "ANDRADE"."DEPT"                            5.937 KB       4 linhas
+
+. . importou "ANDRADE"."EMP"                             8.570 KB      14 linhas
+
+. . importou "ANDRADE"."SALGRADE"                        5.867 KB       5 linhas
+
+. . importou "ANDRADE"."BONUS"                               0 KB       0 linhas
+
+Processando o tipo de objeto SCHEMA_EXPORT/TABLE/INDEX/INDEX
+Processando o tipo de objeto SCHEMA_EXPORT/TABLE/CONSTRAINT/CONSTRAINT
+Processando o tipo de objeto SCHEMA_EXPORT/TABLE/FGA_POLICY
+Processando o tipo de objeto SCHEMA_EXPORT/TABLE/CONSTRAINT/REF_CONSTRAINT
+O job "SYSTEM"."SYS_IMPORT_FULL_01" foi concluÝdo com 1 erro(s) em 10:49:04
+----------------------------------------------------------------------------------------------------------
+
+
+DÚVIDAS
+1. A LINGUAGEM MUDOU MUITO EM RELAÇÃO AO 8i?
+
+
+PROBLEMAS
+1. Para criar um banco de dados
+Configurar net manager
+dbhome -> C:\app\admlogger\product\11.2.0\dbhome_1\NETWORK\ADMIN
+parar serviços -> lsnrctl stop
+inicia serviços -> lsnrctl start
+

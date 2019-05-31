@@ -1,0 +1,17 @@
+ATIVIDADE PESQUISA ALUNO (SONECA):
+
+1- Retornar todas as linhas da tabela Aluno, mas apenas as colunas: rm, nome, situacao
+
+2- Acrescentar à query anterior o retorno apenas dos alunos que se chamam 'Ronaldo'.
+
+3- Retornar todos os alunos, cujo primeiro nome seja 'Ronaldo'.
+
+4- Alterar o nome dos alunos que se chamam 'Ronaldo' para 'Jenifer'
+
+5- Alterar o nome do aluno, cujo rm é o 3, para 'Ronaldo' novamente.
+
+6- Apagar o aluno, cujo rm é igual a 5.
+
+7- Alterar a situacao do aluno com rm igual a 4, para 'Trancado'
+
+8- Retornar todas as linhas e todas as colunas da tabela Aluno.

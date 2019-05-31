@@ -1,0 +1,21 @@
+ATIVIDADE PESQUISA (OLIMPIADA):
+
+1- Retornar uma lista das modalidades ordenada pelo nome.
+
+2- Retornar uma lista das categorias existentes, sem repetição.
+
+3- Retornar a competição que demora mais para terminar.
+
+4- Retornar a competição que demora menos para terminar.
+
+5- Retornar as modalidades que mais premiam, especificando nome, categora e premiação.
+
+6- Retornar as modalidades que menos premiam, especificando nome, categora e premiação.
+
+7- Retornar as modalidades que iniciam com a letra B no nome.
+
+8- Retornar as modalidades que possuam a letra E em qualquer parte do nome.
+
+9- Retornar as modalidades que são realizadas em PISCINA.
+
+10- Retornar as modalidades que tem a premiação entre 13.000,00 e 17.000,00.

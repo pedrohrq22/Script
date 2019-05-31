@@ -1,0 +1,44 @@
+﻿OS SEGUINTES CLIENTES COMPRARAM OS 
+SEGUINTES LIVROS:
+
+1 Ana Tereza de A. Vasques 
+6, 1 Harry Potter e a Pedra Filosofal
+
+20 Monique Gurgel Aguiar 
+13, 1 Use a Cabeça! Desenvolvendo para Android
+14, 1 Use a Cabeça! SQL
+
+21 Priscila Ramos de Melo
+9, 1 Harry Potter e o Cálice de Fogo
+10, 1 Harry Potter e a Ordem da Fênix
+
+22 Simone Karla Costa da Silva
+16, 3 Visões de Robô
+
+23 Arthur Felipe R. Costa
+16, 1 Visões de Robô
+
+24 Diogo Fernandes de Souza
+13, 2 Use a Cabeça! Desenvolvendo para Android
+14, 2 Use a Cabeça! SQL
+15, 2 Use a Cabeça! C#
+
+28 Gilberto Oliveira
+11, 1 Harry Potter e o Enigma do Príncipe
+12, 1 Harry Potter e as Relíquias da Morte
+
+29 Guilherme Azevedo Reis
+14, 1 Use a Cabeça! SQL
+
+35 Paulo Holanda Ribeiro Netto
+3, 2 ABC
+4, 2 ABC2
+
+36 Rafael Victor
+5, 1 LOGICA
+2, 2 PROJETO DE BANCO DE DADOS
+
+37 Ramon Douglas Neves de Andrade
+13, 2 Use a Cabeça! Desenvolvendo para Android
+14, 2 Use a Cabeça! SQL
+15, 2 Use a Cabeça! C#

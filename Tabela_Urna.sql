@@ -1,0 +1,317 @@
+--DROP TABLESPACE "TBS_URNA" INCLUDING CONTENTS AND DATAFILES;
+--Cria a tablespace tbsUrna
+CREATE TABLESPACE tbs_urna
+DATAFILE 'C:\Users\pedro_000\Documents\SQL_DBF\Urna.dbf'--caminho do arquivo ".dbf"                
+SIZE 50m AUTOEXTEND ON NEXT 200m EXTENT MANAGEMENT LOCAL;
+
+--drop user "URNA_GREMIO" CASCADE;
+--criar usuario
+create user Urna_Gremio
+identified by 123456
+DEFAULT TABLESPACE tbs_urna;
+
+--inclui privilégios ao usuario
+Grant all privileges to Urna_Gremio;
+
+-- permitir espaço ilimitado ao usuario
+ALTER USER Urna_Gremio QUOTA UNLIMITED ON tbs_urna
+
+commit;
+ 
+--ADMINISTRADOR ÚNICO.
+--DROP TABLE ADMINISTRADOR;
+--DELETE FROM ADMINISTRADOR;
+CREATE TABLE ADMINISTRADOR 
+(
+COD_ADM INT,
+NOME VARCHAR(50) NOT NULL,
+ID_ADM VARCHAR2(10) NOT NULL,
+CONSTRAINT PK_ADMNISTRADOR PRIMARY KEY (COD_ADM)
+);
+INSERT INTO ADMINISTRADOR (COD_ADM, NOME, ID_ADM) VALUES (1, 'ADM', '123456');
+--SELECT * FROM ADMINISTRADOR WHERE ID_ADM = '123456';
+--===================================
+
+--DROP TABLE ALUNOS;   --exclui a tabela alunos
+--DELETE FROM ALUNOS;   --- exclui conteudo da tabela alunos
+CREATE TABLE ALUNOS
+(
+RM INT,
+NOME VARCHAR2 (50) NOT NULL,
+SENHA VARCHAR2 (20) NOT NULL,
+ATIVO NUMBER (3) NOT NULL,
+--COD_CHAPA_VOTADA VARCHAR2(50) NULL,
+--NULO CHAR(1) DEFAULT 'N' NOT NULL, --VERIFICA SE ALUNO VOTOU NULO
+--VOTOU_OU_NAO CHAR(10) DEFAULT 'NÃO VOTOU' NOT NULL, --VERIFICA SE ALUNO VOTOU
+CONSTRAINT PK_ALUNO_RM PRIMARY KEY (RM)
+);
+
+INSERT INTO ALUNOS (RM, NOME, SENHA, ATIVO) VALUES (26515, 'Pedro', '123456', 1);
+--SELECT * FROM ALUNOS;
+commit;
+
+--Select Nome, rm from alunos where ativo='1' order by RM;
+
+--DROP SEQUENCE ALUNOS_SEQ
+--CREATE SEQUENCE ALUNOS_SEQ
+--MINVALUE 1
+--MAXVALUE 999999999999999999999999999
+--START WITH 1
+--INCREMENT BY 1
+--CACHE 20;
+
+--DROP TABLE CHAPA;
+--DELETE FROM CHAPA;
+CREATE TABLE CHAPA
+(
+COD_CHAPA INT NOT NULL,
+NUMERO INT NOT NULL, --Constraint uq_nchapa unique (Numero),
+NOME_CHAPA VARCHAR2(50) NOT NULL,
+DATA_CRIACAO DATE NULL,
+
+--PRESIDENTE VARCHAR(50) NOT NULL,
+--VICE_PRESIDENTE VARCHAR2(50) NOT NULL,
+
+DESCRICAO VARCHAR2(4000),
+CAMINHO_FOTO VARCHAR2(4000),
+Ativo char(2) NOT NULL,
+CONSTRAINT PK_CHAPA PRIMARY KEY (NUMERO)
+);
+INSERT INTO CHAPA (COD_CHAPA, NUMERO, NOME_CHAPA, ATIVO) VALUES (1,13, 'PETRALHA', 'S');
+
+--INSERT TEMP. Programa:
+--INSERT INTO CHAPA (COD_CHAPA, NUMERO, NOME_CHAPA,PRESIDENTE, VICE_PRESIDENTE, DESCRICAO, CAMINHO_FOTO, ATIVO) VALUES
+--(1,417,'VIRAL','Pedro','Vini','Por uma escola melhor..','C:fotos','S');
+
+--Select nome, descricao, caminho foto from chapa where ativo='1' order by cod_chapa;
+
+--SELECT * FROM CHAPA;
+commit;
+
+--DROP SEQUENCE CHAPA_SEQ
+--CREATE SEQUENCE CHAPA_SEQ
+--MINVALUE 1
+--MAXVALUE 999999999999999999999999999
+--START WITH 1
+--INCREMENT BY 1
+--CACHE 20;
+
+--ALTERAÇÕES 29-09-17
+-- DROP TABLE MEMBRO;
+-- DELETE FROM MEMBRO;
+CREATE TABLE MEMBRO
+(
+COD_MEMBRO INT,
+RM_ALUNO INT,
+NUMERO_CHAPA INT,
+CARGO VARCHAR2(100) NOT NULL,
+DATA_ENTRADA DATE NULL,
+ATIVO INT, -- 0 INATIVO / 1 ATIVO
+CONSTRAINT PK_MEMBRO PRIMARY KEY (COD_MEMBRO),
+CONSTRAINT FK_MEMBRO_ALUNOS FOREIGN KEY (RM_ALUNO) REFERENCES ALUNOS (RM),
+CONSTRAINT FK_MEMBRO_CHAPA FOREIGN KEY (NUMERO_CHAPA) REFERENCES CHAPA (NUMERO)
+);
+
+--SELECT * FROM MEMBRO;
+commit;
+
+--DROP SEQUENCE ALUNOS_SEQ
+--CREATE SEQUENCE ALUNOS_SEQ
+--MINVALUE 1
+--MAXVALUE 999999999999999999999999999
+--START WITH 1
+--INCREMENT BY 1
+--CACHE 20;
+
+--DROP TABLE MESARIO;  -- exclui a tabela Mesário
+--DELETE FROM MESARIO; --exclui conteudo da tabela mesário
+CREATE TABLE MESARIO
+(
+COD_MESARIO INT NOT NULL,
+NOME VARCHAR2(50) NOT NULL,
+ID_MESARIO VARCHAR2(10) NOT NULL,
+SENHA VARCHAR2(20) NOT NULL,
+ATIVO INT NOT NULL,
+CONSTRAINT PK_MESARIO PRIMARY KEY (COD_MESARIO)
+);
+--DROP SEQUENCE MESARIO_SEQ
+CREATE SEQUENCE MESARIO_SEQ
+MINVALUE 1
+MAXVALUE 9999
+START WITH 1
+INCREMENT BY 1
+CACHE 20;
+
+INSERT INTO MESARIO (COD_MESARIO, NOME, ID_MESARIO, SENHA, ATIVO) VALUES (MESARIO_SEQ.NEXTVAL, 'PEDRO', 'P22', '123456', 1);
+--INSERT INTO MESARIO (COD_MESARIO, NOME, ID_MESARIO, SENHA, ATIVO) VALUES (MESARIO_SEQ.NEXTVAL, 'VINI', 'V22', '123456', 1);
+
+
+--SELECT * FROM MESARIO;
+Commit;
+
+
+--DROP TABLE APURACAO; -- exclui a tabela apuração
+--delete from apuracao; --exclui conteudo da tabela apuração
+CREATE TABLE APURACAO
+(
+COD_APURACAO INT,
+DATA_APURACAO DATE NOT NULL,
+HORA_APURACAO DATE NOT NULL,
+RM_ALUNO INT NOT NULL,
+NUMERO_CHAPA INT NULL CONSTRAINT CHK_APURACAO_CHAPA CHECK (NUMERO_CHAPA IN(1,2,3,4,5)),
+COD_MESARIO INT NOT NULL,
+CONSTRAINT PK_ELEICAO PRIMARY KEY (COD_APURACAO),
+CONSTRAINT FK_APURACAO_ALUNO FOREIGN KEY (RM_ALUNO) REFERENCES ALUNOS (RM),
+CONSTRAINT FK_APURACAO_MESARIO FOREIGN KEY (COD_MESARIO) REFERENCES MESARIO (COD_MESARIO)
+);
+
+select * from apuracao
+rollback
+
+INSERT INTO APURACAO (COD_APURACAO, DATA_APURACAO, HORA_APURACAO, RM_ALUNO, NUMERO_CHAPA, COD_MESARIO) VALUES
+(1, to_date('2017-09-29','yyyy-MM-dd'), to_date('22:15','hh24:mi'), 26515, 1, 1);
+
+commit;
+--SELECT COUNT (Numero_chapa) FROM apuracao WHERE Numero_chapa LIKE '%1';
+
+--select * from apuracao;
+
+--seleciona a hora de forma certa.
+select to_char(hora_apuracao, 'hh24:mi') from apuracao;
+
+--==================================================
+
+
+
+
+
+
+DESC ALUNOS
+DESC CHAPA
+DESC MESARIO
+DESC APURACAO
+
+INSERT INTO ALUNOS (RM, NOME, SENHA, ATIVO) VALUES (23, 'ADRIANO', '123456', 1);
+
+INSERT INTO CHAPA (NUMERO, NOME_CHAPA, ATIVO) VALUES (13, 'PETRALHA', 'S');
+
+INSERT INTO MESARIO (COD_MESARIO, NOME, ID_MESARIO, SENHA, ATIVO) VALUES (MESARIO_SEQ.NEXTVAL, 'PEDRO', 'P22', '123456', 1);
+
+INSERT INTO APURACAO (COD_APURACAO, DATA_APURACAO, HORA_APURACAO, RM_ALUNO, NUMERO_CHAPA, COD_MESARIO) VALUES
+(1, TO_date(SYSDATE, 'yyyy-MM-dd'), TO_date(SYSDATE, 'hh24:mi'), 26515, null, 3);
+
+INSERT INTO APURACAO (COD_APURACAO, DATA_APURACAO, HORA_APURACAO, RM_ALUNO, NUMERO_CHAPA, COD_MESARIO) VALUES
+(1, to_date('2017-09-29','yyyy-MM-dd'), to_date('22:15','hh24:mi'), 26515, 1, 1);
+
+
+select to_char(hora_apuracao, 'hh24:mi') from apuracao;
+select * from apuracao;
+
+
+--inner
+select a.nome from alunos a
+inner join apuracao ap
+on a.rm = ap.rm_aluno;
+
+select a.nome, ap.numero_chapa, c.nome_chapa from alunos a
+inner join apuracao ap
+on a.rm = ap.rm_aluno
+inner join chapa c
+on ap.numero_chapa = c.numero;
+
+select c.nome_chapa, count(ap.numero_chapa) from alunos a
+inner join apuracao ap
+on a.rm = ap.rm_aluno
+inner join chapa c
+on ap.numero_chapa = c.numero
+group by c.nome_chapa;
+
+
+--SELECT * FROM USER_CONSTRAINTS WHERE TABLE_NAME = 'ALUNOS';
+
+Commit;
+
+--COMANDOS USADOS NO PROGRAMA:
+
+--SELECT COUNT (COD_CHAPA_VOTADA) FROM ALUNOS  WHERE COD_CHAPA_VOTADA LIKE '%1' and ativo='1';
+
+-- Select VOTOU_OU_NAO from alunos where RM='26515' and VOTOU_OU_NAO='VOTOU'
+
+--select senha from alunos where senha='pedro' and RM='26515';
+
+--select nome, rm from alunos where VOTOU_OU_NAO='NÃO VOTOU';
+----------------------------------------------------------
+
+--Select cod_alunos, nome, rm, senha FROM ALUNOS Where Ativo='1' order by cod_alunos;
+--Select nome, rm, senha FROM ALUNOS Where Ativo='1' order by cod_alunos;
+
+--SELECT COUNT (COD_CHAPA_VOTADA) FROM RM_ALUNOS 
+--WHERE COD_CHAPA_VOTADA LIKE '%3';
+
+--SELECT COUNT (NULO) FROM RM_ALUNOS WHERE NULO LIKE '%S';
+-------------------------------
+--UPDATE RM_ALUNOS SET COD_CHAPA_VOTADA = 1 WHERE RM='26515';
+--UPDATE RM_ALUNOS SET COD_CHAPA_VOTADA = 1 WHERE RM='26515';
+--UPDATE RM_ALUNOS SET COD_CHAPA_VOTADA = null; --WHERE RM = '26515';
+
+------------------------------
+--UPDATE RM_ALUNOS  SET  ATIVO = 'NÃO VOTOU', NULO = 'N' WHERE  RM = '26515';
+--UPDATE RM_ALUNOS  SET  ATIVO = 'NÃO VOTOU', NULO = 'N' WHERE  RM = '22333';
+--UPDATE RM_ALUNOS  SET  ATIVO = 'NÃO VOTOU', NULO = 'N' WHERE  RM = '33444';
+--UPDATE RM_ALUNOS  SET  ATIVO = 'NÃO VOTOU', NULO = 'N' WHERE  RM = '44555';
+--UPDATE RM_ALUNOS  SET  ATIVO = 'NÃO VOTOU', NULO = 'N' WHERE  RM = '55666';
+
+--SELECT SENHA FROM RM_ALUNOS WHERE SENHA = 'pedro' and RM='11222';
+
+--UPDATE RM_ALUNOS SET ATIVO = 'VOTOU', NULO = 'S' WHERE RM = '11222'
+----------------------------
+--UPDATE RM_ALUNOS SET ATIVO = 'VOTOU', NULO = 'S' WHERE RM = '22333';
+-----------------------------
+
+--SELECT * FROM RM_ALUNOS WHERE SENHA ='pedro' AND RM='11222';
+
+--SELECT SENHA FROM RM_ALUNOS WHERE SENHA ='pedro';
+
+
+--INSERT INTO ALUNOS (COD_ALUNOS, NOME, RM, SENHA, ATIVO) VALUES (ALUNOS_SEQ.NEXTVAL, 'Pedro Henrique', '26515', 'pedro','1');
+-- Select senha from alunos where senha='" + _senha + "' and RM='" + _rm + "' and Ativo='1'"; 
+
+
+
+--Update  Mesario set nome='Pedro Henrique', id_mesario='P33', senha='12345', ativo='1';
+--Update Mesario set nome='Pedro Henrique', id_mesario='P33', senha='12345';
+
+--Select Nome, id_mesario, Senha from MESARIO Where Ativo='1' order by cod_mesario;
+
+--SELECT * FROM MESARIO WHERE ID_MESARIO = 'P16';
+ --INSERT INTO MESARIO  (NOME, ID_MESARIO, SENHA)  VALUES ( 'Eduardo','E16','12345')
+--commit;
+--SELECT SENHA FROM MESARIO WHERE SENHA= '12345' and ID_MESARIO= 'P16';
+--SELECT MESARIO FROM ID_MESARIO WHERE ID_MESARIO ='12345';
+
+
+
+
+--INSERT INTO MESARIO (COD_MESARIO, NOME, ID_MESARIO, SENHA, ATIVO) VALUES (MESARIO_SEQ.NEXTVAL, 'Pedro Henrique', 'P22','12345', '1');
+--INSERT INTO MESARIO (COD_MESARIO, NOME, ID_MESARIO, SENHA, ATIVO) VALUES (MESARIO_SEQ.NEXTVAL, 'Vinicius E.', 'V10','12345', '1');
+
+
+
+
+--Teste inserir dados na tabela
+--INSERT INTO CHAPA (COD_CHAPA, NOME_CHAPA, NUMERO, PRESIDENTE, VICE_PRESIDENTE, DESCRICAO, CAMINHO_FOTO, ATIVO) VALUES
+--(CHAPA_SEQ.NEXTVAL,'Aluno Cidadão','2345','Roberto Antônio','Maria Laura','Por um movimento estudantil forte, reativo, organizado e combativo.','C:\\Users\pedro_000\\Desktop\\Fotos_Votação\\Foto1.png','1');
+
+--commit;
+
+--select cod_chapa, nome_chapa, numero, presidente, vice_presidente, descricao, caminho_foto from chapa where ativo='S';
+
+--Select * from Chapa where Ativo='S' order by cod_chapa;
+
+--Select * from Chapa where Ativo='S'
+
+--update chapa set cod_chapa='0', Ativo='N';
+
+--SELECT * FROM CHAPA WHERE COD_CHAPA='S'
+
+
